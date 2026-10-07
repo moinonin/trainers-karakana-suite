@@ -1,0 +1,438 @@
+{
+  "global": {
+    "ranking_profile": "balanced",
+    "loss_module": "moment",
+    "utility_power": 1.1,
+    "lambda_sgo": 0.2,
+    "coupling_k": 10,
+    "use_coupling_trajectory": true,
+    "lambda_coupling": 1.0,
+    "coupling_gradient": true,
+    "entropy_coef": 0.01,
+    "adaptive_lambda": false,
+    "cloud_sync": false,
+    "sgo_buffer_size": 20,
+    "v_alpha_panic_threshold": -0.01,
+    "alpha_safety_floor": 0.4,
+    "num_epochs": 50,
+    "learning_rate": 0.001,
+    "batch_size": 128
+  },
+  "profiles": {
+    "flow_sentinel": {
+      "lambda_sgo": 0.18,
+      "sgo_buffer_size": 23,
+      "loss_module": "moment",
+      "ranking_profile": "balanced",
+      "alpha_safety_floor": 0.7,
+      "learning_rate": 0.005
+    },
+    "logic_guard": {
+      "lambda_sgo": 0.25,
+      "sgo_buffer_size": 15,
+      "loss_module": "moment",
+      "ranking_profile": "aggressive",
+      "alpha_safety_floor": 0.65,
+      "learning_rate": 0.002
+    },
+    "finance_rag": {
+      "lambda_sgo": 0.01,
+      "loss_module": "probability_kl",
+      "ranking_profile": "conservative",
+      "max_length": 512,
+      "score_method": "hybrid",
+      "do_sample": true,
+      "temperature": 0.3,
+      "top_p": 0.9,
+      "hybrid": {
+        "mon_surp": {
+          "chunk_size": 12,
+          "collapse_threshold": -0.035,
+          "safety_floor": 0.3,
+          "_note": "Primary detector. Fine-grained chunk catches repetition + gibberish fast."
+        },
+        "mon_sig": {
+          "chunk_size": 24,
+          "collapse_threshold": -0.06,
+          "safety_floor": 0.2,
+          "penalties": {
+            "repetition_decay": true,
+            "entropy_gate": true,
+            "surprisal_floor": true,
+            "threshold_entropy": 1.0
+          },
+          "_note": "Stable baseline. Coarse chunk avoids noise. Rarely fires — backup only."
+        }
+      },
+      "threshold_percentile": 0.9,
+      "threshold_variant": "sigmoid",
+      "steepness": 10.0,
+      "grg": {
+        "v_alpha_panic_threshold": -0.05,
+        "alpha_safety_floor": 0.05,
+        "warmup_steps": 100
+      }
+    },
+    "high_frequency_trading": {
+      "ranking_profile": "aggressive",
+      "loss_module": "moment",
+      "lambda_sgo": 0.486,
+      "entropy_coef": 0.01,
+      "tail_risk_coef": 4.0,
+      "adaptive_lambda": false,
+      "cloud_sync": false,
+      "sgo_buffer_size": 23,
+      "v_alpha_panic_threshold": -0.05,
+      "alpha_safety_floor": 0.005,
+      "trajectory_audit_enabled": true,
+      "evx": {
+        "shifts": [
+          1,
+          5,
+          20
+        ],
+        "label_threshold": 0.0025
+      },
+      "grg": {
+        "window_size": 23,
+        "ema_weight": 0.3,
+        "warmup_steps": 20,
+        "lr_slash_factor": 0.5,
+        "lr_restore_factor": 1.0,
+        "thermal_damping_min_temp": 0.01,
+        "e_stop_horizon": 3,
+        "collapse_v_alpha_threshold": -0.022,
+        "stability_v_alpha_threshold": 0.005,
+        "trajectory_window_size": 1000,
+        "trajectory_window_step": 60,
+        "v_alpha_panic_threshold": -0.05,
+        "alpha_safety_floor": 0.005
+      }
+    },
+    "hft-profile": {
+      "lambda_sgo": 0.05,
+      "learning_rate": 0.001,
+      "episodes": 25,
+      "window_size": 20,
+      "max_steps": 252,
+      "commission": 0.001,
+      "initial_balance": 10000,
+      "ranking_profile": "balanced",
+      "loss_module": "moment",
+      "utility_power": 1.1,
+      "lambda_coupling": 0.5,
+      "use_coupling_trajectory": true,
+      "coupling_k": 10,
+      "coupling_gradient": true,
+      "entropy_coef": 0.01,
+      "sb3_lr": 0.0003,
+      "sgo_buffer_size": 23,
+      "alpha_safety_floor": 0.005,
+      "v_alpha_panic_threshold": -0.05,
+      "grg": {
+        "window_size": 23,
+        "alpha_safety_floor": 0.005,
+        "v_alpha_panic_threshold": -0.05,
+        "trajectory_window_size": 1000,
+        "trajectory_window_step": 60
+      }
+    },
+    "image_authenticity": {
+      "lambda_sgo": 0.05,
+      "loss_module": "probability_kl",
+      "ranking_profile": "aggressive",
+      "temperature": 0.5,
+      "grg": {
+        "v_alpha_panic_threshold": -0.1,
+        "alpha_safety_floor": 0.05
+      }
+    },
+    "sppo_llm": {
+      "grg": {
+        "window_size": 20,
+        "ema_weight": 0.3,
+        "v_alpha_panic_threshold": -0.01,
+        "alpha_safety_floor": 0.1,
+        "lr_slash_factor": 0.1,
+        "lr_restore_factor": 1.0,
+        "e_stop_horizon": 5,
+        "stability_v_alpha_threshold": 0.005,
+        "warmup_steps": 50
+      },
+      "sgo": {
+        "lambda_sgo": 0.1,
+        "loss_module": "moment",
+        "utility_power": 1.1,
+        "ranking_profile": "balanced",
+        "bins": 3
+      }
+    },
+    "industrial_control": {
+      "lambda_sgo": 0.05,
+      "loss_module": "moment",
+      "ranking_profile": "conservative",
+      "deviation_tolerance": 1.0,
+      "grg": {
+        "v_alpha_panic_threshold": -0.02,
+        "alpha_safety_floor": 0.1,
+        "e_stop_horizon": 3
+      }
+    },
+    "evx_historical_trading": {
+      "lambda_sgo": 0.2,
+      "learning_rate": 0.001,
+      "loss_module": "probability_fro",
+      "ranking_profile": "balanced",
+      "episodes": 20,
+      "entropy_coef": 0.0,
+      "tail_risk_coef": 0.0,
+      "batch_size": 256,
+      "evx_shifts": [
+        1
+      ],
+      "evx_label_threshold": 0.0025,
+      "train_fraction": 0.7,
+      "validation_fraction": 0.15,
+      "sgo_buffer_size": 20,
+      "grg": {
+        "window_size": 20,
+        "ema_weight": 0.3,
+        "warmup_steps": 50,
+        "lr_slash_factor": 0.1,
+        "lr_restore_factor": 1.0,
+        "e_stop_horizon": 5,
+        "stability_v_alpha_threshold": 0.005,
+        "v_alpha_panic_threshold": -0.01,
+        "alpha_safety_floor": 0.1
+      }
+    },
+    "HistoricalTrading-v0": {
+      "lambda_sgo": 0.0004,
+      "learning_rate": 0.001,
+      "loss_module": "probability_kl",
+      "ranking_profile": "aggressive",
+      "episodes": 100,
+      "entropy_coef": 0.0,
+      "tail_risk_coef": 0.0,
+      "random_seed": 42,
+      "batch_size": 512,
+      "updates_per_epoch": 100,
+      "gamma": 0.0,
+      "conservative_weight": 0.0,
+      "early_stopping_patience": 70,
+      "early_stopping_min_delta": 0.0001,
+      "max_rows": null,
+      "dataset_path": "artifacts/cleaned_trade_history_window75_100_balanced_train.csv",
+      "dataset_sha256": "1ed2907de6dc9c06b165356f51c4b4f728eb92161ad49f73617e4ace9937e813",
+      "sgo_buffer_size": 20,
+      "num_epochs": 25,
+      "grg": {
+        "window_size": 20,
+        "alpha_safety_floor": 0.4,
+        "v_alpha_panic_threshold": -0.01
+      }
+    },
+    "HistoricalTrading-v1": {
+      "lambda_sgo": 0.1,
+      "learning_rate": 0.01,
+      "loss_module": "probability_fro",
+      "ranking_profile": "balanced",
+      "episodes": 100,
+      "entropy_coef": 0.00009,
+      "tail_risk_coef": 0.0,
+      "batch_size": 512,
+      "conservative_weight": 1.0001,
+      "early_stopping_patience": 100,
+      "utility_power": 1.1,
+      "lambda_coupling": 1.0,
+      "coupling_k": 10,
+      "coupling_gradient": true,
+      "use_coupling_trajectory": true,
+      "sgo_buffer_size": 20,
+      "num_epochs": 50,
+      "grg": {
+        "window_size": 20,
+        "alpha_safety_floor": 0.4,
+        "v_alpha_panic_threshold": -0.01
+      }
+    },
+    "gym_rl": {
+      "ranking_profile": "conservative",
+      "loss_module": "probability_fro",
+      "lambda_sgo": 0.05,
+      "learning_rate": 0.001,
+      "batch_size": 128,
+      "updates_per_epoch": 100,
+      "episodes": 25,
+      "entropy_coef": 0.01,
+      "tail_risk_coef": 0.0,
+      "adaptive_lambda": false,
+      "cloud_sync": false,
+      "sgo_buffer_size": 20,
+      "num_epochs": 50,
+      "early_stopping_patience": 20,
+      "early_stopping_min_delta": 0.0001,
+      "gamma": 0.99,
+      "conservative_weight": 1.0,
+      "v_alpha_panic_threshold": -0.01,
+      "alpha_safety_floor": 0.4,
+      "trajectory_audit_enabled": false,
+      "collapse_threshold": -0.015,
+      "grg": {
+        "v_alpha_panic_threshold": -0.01,
+        "alpha_safety_floor": 0.4
+      },
+      "gym_envs": {
+        "CartPole-v1": {
+          "trainer_type": "spg",
+          "lambda_sgo": 0.05,
+          "learning_rate": 0.01,
+          "loss_module": "moment",
+          "ranking_profile": "balanced",
+          "episodes": 200,
+          "entropy_coef": 0.05,
+          "gamma": 0.99,
+          "lambda_coupling": 0.003,
+          "coupling_k": 10,
+          "coupling_gradient": false,
+          "use_coupling_trajectory": true,
+          "utility_power": 1.1
+        },
+        "LunarLander-v3": {
+          "trainer_type": "spg",
+          "lambda_sgo": 0.03,
+          "learning_rate": 0.005,
+          "loss_module": "probability_fro",
+          "ranking_profile": "conservative",
+          "episodes": 500,
+          "entropy_coef": 0.02
+        },
+        "MountainCar-v0": {
+          "trainer_type": "spg",
+          "lambda_sgo": 0.02,
+          "learning_rate": 0.005,
+          "loss_module": "moment",
+          "ranking_profile": "balanced",
+          "episodes": 1000,
+          "entropy_coef": 0.02,
+          "lambda_coupling": 0.003,
+          "coupling_k": 10,
+          "coupling_gradient": false,
+          "use_coupling_trajectory": true,
+          "utility_power": 1.1
+        },
+        "Acrobot-v1": {
+          "trainer_type": "spg",
+          "env_name": "Acrobot-v1",
+          "loss_module": "probability_kl",
+          "ranking_profile": "balanced",
+          "lambda_sgo": 0.5,
+          "episodes": 500,
+          "updates_per_epoch": 100,
+          "steering_enabled": true,
+          "lambda_coupling": 0.003,
+          "use_coupling_trajectory": true
+        },
+        "Pendulum-v1": {
+          "trainer_type": "spg",
+          "lambda_sgo": 0.005,
+          "learning_rate": 0.0003,
+          "loss_module": "probability_fro",
+          "ranking_profile": "conservative",
+          "episodes": 300,
+          "entropy_coef": 0.01
+        },
+        "SGO-Trading-v0": {
+          "trainer_type": "spg",
+          "lambda_sgo": 0.486,
+          "learning_rate": 0.005,
+          "loss_module": "moment",
+          "episodes": 2000,
+          "entropy_coef": 0.01,
+          "tail_risk_coef": 4.0
+        },
+        "HistoricalTrading-v0": {
+          "trainer_type": "offline_trading",
+          "lambda_sgo": 0.0004,
+          "learning_rate": 0.001,
+          "loss_module": "probability_kl",
+          "ranking_profile": "aggressive",
+          "episodes": 100,
+          "entropy_coef": 0.0,
+          "tail_risk_coef": 0.0,
+          "random_seed": 42,
+          "batch_size": 512,
+          "updates_per_epoch": 100,
+          "gamma": 0.0,
+          "conservative_weight": 0.0,
+          "early_stopping_patience": 70,
+          "early_stopping_min_delta": 0.0001,
+          "max_rows": null,
+          "dataset_path": "artifacts/cleaned_trade_history_window75_100_balanced_train.csv",
+          "dataset_sha256": "1ed2907de6dc9c06b165356f51c4b4f728eb92161ad49f73617e4ace9937e813"
+        },
+        "HistoricalTrading-v1": {
+          "trainer_type": "offline_trading_v2",
+          "lambda_sgo": 0.1,
+          "learning_rate": 0.01,
+          "loss_module": "probability_fro",
+          "ranking_profile": "balanced",
+          "episodes": 100,
+          "entropy_coef": 0.00009,
+          "tail_risk_coef": 0.0,
+          "batch_size": 512,
+          "conservative_weight": 1.0001,
+          "early_stopping_patience": 100
+        },
+        "EvxHistoricalTrading-v0": {
+          "trainer_type": "evx",
+          "lambda_sgo": 0.2,
+          "learning_rate": 0.001,
+          "loss_module": "probability_fro",
+          "ranking_profile": "balanced",
+          "episodes": 20,
+          "entropy_coef": 0.0,
+          "tail_risk_coef": 0.0,
+          "batch_size": 256,
+          "evx_shifts": [
+            1
+          ],
+          "evx_label_threshold": 0.0025,
+          "train_fraction": 0.7,
+          "validation_fraction": 0.15
+        },
+        "Ant-v5": {
+          "trainer_type": "continuous_sgpo",
+          "lambda_sgo": 0.005,
+          "learning_rate": 0.0003,
+          "loss_module": "probability_kl",
+          "ranking_profile": "conservative",
+          "episodes": 500,
+          "entropy_coef": 0.05,
+          "tail_risk_coef": 0.0,
+          "adaptive_lambda": false
+        },
+        "Atari-Pixel-v4": {
+          "trainer_type": "atari_sgpo",
+          "lambda_sgo": 0.05,
+          "learning_rate": 0.00025,
+          "loss_module": "probability_kl",
+          "ranking_profile": "conservative",
+          "episodes": 10,
+          "entropy_coef": 0.01,
+          "_note": "probability_kl preferred for speed; equivalent accuracy to moment in pixel-space. UI/API cap Atari runs at 50 episodes by default."
+        },
+        "HeartRisk-v0": {
+          "trainer_type": "spg",
+          "lambda_sgo": 0.1,
+          "learning_rate": 0.005,
+          "loss_module": "moment",
+          "ranking_profile": "balanced",
+          "episodes": 500,
+          "entropy_coef": 0.05,
+          "tail_risk_coef": 0.1
+        }
+      }
+    }
+  }
+}
