@@ -4,7 +4,7 @@ import gymnasium as gym
 import numpy as np
 import pytest
 
-from karakana.metrics import evaluate_structural_geometry
+from karakana_engine.metrics import evaluate_structural_geometry
 
 ENV_NAMES = ["CartPole-v1", "Acrobot-v1", "MountainCar-v0"]
 

@@ -1,6 +1,6 @@
 import pytest
-from karakana.config import get_config
-from karakana.trainers.spg import SPGTrainer
+from karakana_engine.config import get_config
+from karakana_engine.trainers.spg import SPGTrainer
 
 
 def test_cartpole_config_defaults():

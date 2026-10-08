@@ -1,6 +1,6 @@
 import pytest
 import torch
-from karakana.trainers.grpo import GRPOTrainer, GRPORefPolicy
+from karakana_engine.trainers.grpo import GRPOTrainer, GRPORefPolicy
 
 def test_grpo_init_and_step():
     trainer = GRPOTrainer(

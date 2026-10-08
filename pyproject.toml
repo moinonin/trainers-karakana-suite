@@ -59,7 +59,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["karakana*"]
+include = ["karakana_engine*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json"]

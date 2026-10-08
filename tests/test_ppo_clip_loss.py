@@ -10,7 +10,7 @@ and stochastic sampling are essential for non-degenerate PPO training.
 import pytest
 import torch
 
-from karakana.torch_loss import TorchSGOLoss
+from karakana_engine.torch_loss import TorchSGOLoss
 
 # ===================================================================
 # Test 1: TorchSGOLoss full computation (structural + coupling)
@@ -304,7 +304,7 @@ class TestSPGTrainerPPOTraining:
 
     @pytest.fixture
     def trainer(self):
-        from karakana.trainers.spg import SPGTrainer
+        from karakana_engine.trainers.spg import SPGTrainer
 
         return SPGTrainer("CartPole-v1", lambda_sgo=0.050)
 
@@ -328,7 +328,7 @@ class TestSPGTrainerPPOTraining:
 
     def test_non_degenerate_predictions(self, trainer):
         """After training, predictions should not be all-positive (degenerate)."""
-        from karakana.trainers.spg import SPGTrainer
+        from karakana_engine.trainers.spg import SPGTrainer
 
         test_trainer = SPGTrainer("CartPole-v1", lambda_sgo=0.050)
         for _ in range(3):
@@ -347,7 +347,7 @@ class TestContinuousSPGTrainerPPOTraining:
 
     @pytest.fixture
     def trainer(self):
-        from karakana.trainers.continuous_spg import ContinuousSPGTrainer
+        from karakana_engine.trainers.continuous_spg import ContinuousSPGTrainer
 
         return ContinuousSPGTrainer("Pendulum-v1", lambda_sgo=0.050)
 
@@ -371,7 +371,7 @@ class TestContinuousSPGTrainerPPOTraining:
 
     def test_non_degenerate_predictions(self, trainer):
         """After training, predictions should not be degenerate."""
-        from karakana.trainers.continuous_spg import ContinuousSPGTrainer
+        from karakana_engine.trainers.continuous_spg import ContinuousSPGTrainer
 
         test_trainer = ContinuousSPGTrainer("Pendulum-v1", lambda_sgo=0.050)
         for _ in range(3):

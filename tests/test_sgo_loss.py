@@ -1,6 +1,6 @@
 """Tests for SGOLoss trajectory-aware auto-tuning."""
 
-from karakana.loss import SGOLoss
+from karakana_engine.loss import SGOLoss
 
 
 class TestSGOLoss:
