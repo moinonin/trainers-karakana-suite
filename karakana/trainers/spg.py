@@ -71,6 +71,10 @@ class SPGTrainer:
         else:
             self.gamma = float(gamma)
         self.env = gym.make(env_name)
+        if isinstance(self.env.action_space, gym.spaces.Box):
+            raise TypeError(
+                f"SPGTrainer requires Discrete action space. For continuous environments like '{env_name}', use ContinuousSPGTrainer."
+            )
         obs_size = self.env.observation_space.shape[0]
         action_count = self.env.action_space.n
 

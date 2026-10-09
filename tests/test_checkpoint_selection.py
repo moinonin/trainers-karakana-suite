@@ -1,4 +1,3 @@
-import pytest
 from karakana_api.training_runtime import should_save_best_checkpoint
 
 

@@ -1,4 +1,3 @@
-import os
 from collections import defaultdict, deque
 from typing import Any
 
@@ -8,7 +7,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as functional
 import torch.optim as optim
-from torch.distributions import Categorical
+from torch.distributions import Categorical, Normal
+from torch.distributions.kl import kl_divergence
 
 from karakana.config import get_config
 from karakana.metrics import evaluate_structural_geometry
@@ -38,6 +38,30 @@ class GRPORefPolicy(nn.Module):
     def action_probs(self, x: torch.Tensor) -> torch.Tensor:
         logits = self.forward(x)
         return functional.softmax(logits, dim=-1)
+
+
+class ContinuousGRPORefPolicy(nn.Module):
+    """
+    Gaussian Actor policy for continuous Group Relative Policy Optimization (GRPO).
+    Outputs mean (mu) and standard deviation (std). No critic / value head is needed!
+    """
+
+    def __init__(self, obs_size: int, action_size: int):
+        super().__init__()
+        self.net = nn.Sequential(
+            nn.Linear(obs_size, 64),
+            nn.Tanh(),
+            nn.Linear(64, 64),
+            nn.Tanh(),
+        )
+        self.mu_head = nn.Linear(64, action_size)
+        self.log_std = nn.Parameter(torch.zeros(action_size))
+
+    def forward(self, x: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        features = self.net(x)
+        mu = self.mu_head(features)
+        std = torch.exp(self.log_std)
+        return mu, std
 
 
 class GRPOTrainer:
@@ -76,10 +100,25 @@ class GRPOTrainer:
         self.env_name = env_name
         self.env = gym.make(env_name)
         obs_size = self.env.observation_space.shape[0]
-        action_count = self.env.action_space.n
+        self.is_continuous = isinstance(self.env.action_space, gym.spaces.Box)
 
-        self.policy = GRPORefPolicy(obs_size, action_count)
-        self.ref_policy = GRPORefPolicy(obs_size, action_count)
+        if self.is_continuous:
+            action_dim = self.env.action_space.shape[0]
+            self.action_size = action_dim
+            self.action_count = action_dim
+            self.action_low = self.env.action_space.low.astype(np.float32)
+            self.action_high = self.env.action_space.high.astype(np.float32)
+            self.policy = ContinuousGRPORefPolicy(obs_size, action_dim)
+            self.ref_policy = ContinuousGRPORefPolicy(obs_size, action_dim)
+        elif hasattr(self.env.action_space, "n"):
+            action_count = self.env.action_space.n
+            self.action_count = action_count
+            self.action_size = action_count
+            self.policy = GRPORefPolicy(obs_size, action_count)
+            self.ref_policy = GRPORefPolicy(obs_size, action_count)
+        else:
+            raise TypeError(f"Unsupported action space: {type(self.env.action_space)}")
+
         self.ref_policy.load_state_dict(self.policy.state_dict())
         self.ref_policy.eval()
 
@@ -120,8 +159,8 @@ class GRPOTrainer:
         self._last_alpha = 1.0
         self.last_rho_sq = 0.0
         self.last_episode_rewards: list[float] = []
-        self.last_episode_actions: list[int] = []
-        self.action_reward_buffer: dict[int, deque[float]] = defaultdict(lambda: deque(maxlen=200))
+        self.last_episode_actions: list[Any] = []
+        self.action_reward_buffer: dict[Any, deque[float]] = defaultdict(lambda: deque(maxlen=200))
 
     def should_stop(self) -> bool:
         """Return True if the GRG e-stop condition has fired."""
@@ -146,14 +185,27 @@ class GRPOTrainer:
         while not (done or truncated):
             obs_list.append(obs)
             obs_t = torch.from_numpy(obs).float()
-            with torch.no_grad():
-                logits = self.policy(obs_t)
-                dist = Categorical(logits=logits)
-                action = dist.sample()
-                lp = dist.log_prob(action)
+            if self.is_continuous:
+                with torch.no_grad():
+                    mu, std = self.policy(obs_t)
+                    dist = Normal(mu, std)
+                    action = dist.sample()
+                    lp = dist.log_prob(action).sum()
 
-            next_obs, reward, done, truncated, _ = self.env.step(action.item())
-            actions.append(int(action.item()))
+                action_np = action.cpu().numpy()
+                action_clipped = np.clip(action_np, self.action_low, self.action_high)
+                next_obs, reward, done, truncated, _ = self.env.step(action_clipped)
+                actions.append(action_clipped)
+            else:
+                with torch.no_grad():
+                    logits = self.policy(obs_t)
+                    dist = Categorical(logits=logits)
+                    action = dist.sample()
+                    lp = dist.log_prob(action)
+
+                next_obs, reward, done, truncated, _ = self.env.step(action.item())
+                actions.append(int(action.item()))
+
             rewards.append(float(reward))
             log_probs.append(lp)
             obs = next_obs
@@ -164,8 +216,9 @@ class GRPOTrainer:
             discounted_return = r + self.gamma * discounted_return
 
         total_reward = sum(rewards)
-        for a, r in zip(actions, rewards, strict=True):
-            self.action_reward_buffer[a].append(r)
+        if not self.is_continuous:
+            for a, r in zip(actions, rewards, strict=True):
+                self.action_reward_buffer[a].append(r)
 
         return {
             "obs_list": obs_list,
@@ -210,13 +263,18 @@ class GRPOTrainer:
                 continue
 
             obs_batch = torch.from_numpy(np.array(traj["obs_list"], dtype=np.float32)).float()
-            actions_batch = torch.tensor(traj["actions"], dtype=torch.long)
             old_lp = traj["old_log_probs"]
 
-            # Current policy evaluation
-            logits = self.policy(obs_batch)
-            dist = Categorical(logits=logits)
-            new_lp = dist.log_prob(actions_batch)
+            if self.is_continuous:
+                actions_batch = torch.from_numpy(np.array(traj["actions"], dtype=np.float32)).float()
+                mu, std = self.policy(obs_batch)
+                dist = Normal(mu, std)
+                new_lp = dist.log_prob(actions_batch).sum(dim=-1)
+            else:
+                actions_batch = torch.tensor(traj["actions"], dtype=torch.long)
+                logits = self.policy(obs_batch)
+                dist = Categorical(logits=logits)
+                new_lp = dist.log_prob(actions_batch)
 
             # Ratio & Clipped objective
             ratios = torch.exp(new_lp - old_lp.detach())
@@ -226,18 +284,26 @@ class GRPOTrainer:
             surr_losses.append(-torch.min(surr1, surr2).mean())
 
             # Reference KL divergence: KL(pi_theta || pi_ref)
-            with torch.no_grad():
-                ref_logits = self.ref_policy(obs_batch)
-                ref_dist = Categorical(logits=ref_logits)
-            # Analytical KL for categorical
-            p = dist.probs
-            log_p = dist.logits - dist.logits.logsumexp(dim=-1, keepdim=True)
-            log_ref_p = ref_dist.logits - ref_dist.logits.logsumexp(dim=-1, keepdim=True)
-            kl = (p * (log_p - log_ref_p)).sum(dim=-1).mean()
-            kl_losses.append(kl)
-
-            if self.entropy_coef > 0:
-                entropies.append(dist.entropy().mean())
+            if self.is_continuous:
+                with torch.no_grad():
+                    ref_mu, ref_std = self.ref_policy(obs_batch)
+                    ref_dist = Normal(ref_mu, ref_std)
+                kl = kl_divergence(dist, ref_dist).sum(dim=-1).mean()
+                kl_losses.append(kl)
+                if self.entropy_coef > 0:
+                    entropies.append(dist.entropy().sum(dim=-1).mean())
+            else:
+                with torch.no_grad():
+                    ref_logits = self.ref_policy(obs_batch)
+                    ref_dist = Categorical(logits=ref_logits)
+                # Analytical KL for categorical
+                p = dist.probs
+                log_p = dist.logits - dist.logits.logsumexp(dim=-1, keepdim=True)
+                log_ref_p = ref_dist.logits - ref_dist.logits.logsumexp(dim=-1, keepdim=True)
+                kl = (p * (log_p - log_ref_p)).sum(dim=-1).mean()
+                kl_losses.append(kl)
+                if self.entropy_coef > 0:
+                    entropies.append(dist.entropy().mean())
 
             # Differentiable outcomes for SGO coupling
             diff_outcome_list.append(ratios * adv_tensor)

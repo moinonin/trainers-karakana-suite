@@ -396,9 +396,6 @@ def calculate_regime_aware_ideal(s: float, N: int, entropy: float, min_failure_r
     )
 
 
-from .config import get_config
-
-
 def evaluate_structural_geometry(
     positive_outcomes: np.ndarray,
     negative_outcomes: np.ndarray,
@@ -434,6 +431,8 @@ def evaluate_structural_geometry(
     observed/ideal matrices.
     """
     if ranking_profile is None:
+        from .config import get_config
+
         ranking_profile = get_config.get("ranking_profile", "conservative")
     positive_outcomes = np.asarray(positive_outcomes, dtype=float)
     negative_outcomes = np.asarray(negative_outcomes, dtype=float)

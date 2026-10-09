@@ -8,7 +8,7 @@ from .continuous_sgpo import ContinuousSGPOTrainer
 from .continuous_spg import ContinuousSPGTrainer
 from .dataset import DatasetTrainer
 from .grg import AlphaMomentumTracker, GRGController
-from .grpo import GRPORefPolicy, GRPOTrainer
+from .grpo import ContinuousGRPORefPolicy, GRPORefPolicy, GRPOTrainer
 from .sb3 import StructuralSB3Callback
 from .sgpo import SGPOTrainer
 from .spg import SPGTrainer
@@ -18,6 +18,7 @@ __all__ = [
     "SGPOTrainer",
     "GRPOTrainer",
     "GRPORefPolicy",
+    "ContinuousGRPORefPolicy",
     "ContinuousSPGTrainer",
     "ContinuousSGPOTrainer",
     "AtariSGPOTrainer",
