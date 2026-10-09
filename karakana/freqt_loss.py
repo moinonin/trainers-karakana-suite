@@ -373,7 +373,9 @@ class KarakanaStructuralHyperOptLoss(IHyperOptLoss):
                     utility_power=1.1,
                     ranking_profile=getattr(self, "ranking_profile", "conservative"),
                 )
-                alpha_windows.append(float(m.get("alpha_s_sil", 0)))
+                err = float(m.get("alpha_s_sil", 0.0))
+                health = float(np.clip(1.0 - err / 2.0, 0.0, 1.0))
+                alpha_windows.append(health)
             except Exception:
                 alpha_windows.append(None)
 
